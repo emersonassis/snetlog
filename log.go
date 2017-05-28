@@ -3,7 +3,6 @@ package snetlog
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"sync"
@@ -71,7 +70,12 @@ func flushLogFile(log *Log) {
 			log.muxFile.Lock()
 			if log.bufferFile != nil {
 				if log.bufferFile.Len() > 0 && log.fileName != "" {
-					ioutil.WriteFile(log.fileName, log.bufferFile.Bytes(), os.ModeAppend)
+					//ioutil.WriteFile(log.fileName, log.bufferFile.Bytes(), os.ModeAppend)
+					handle, erro := os.OpenFile(log.fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_SYNC, 0644)
+					if erro == nil {
+						handle.Write(log.bufferFile.Bytes())
+						handle.Close()
+					}
 				}
 				log.bufferFile.Reset()
 				log.muxFile.Unlock()
