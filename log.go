@@ -3,7 +3,6 @@ package snetlog
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"time"
@@ -98,7 +97,7 @@ func (l *Log) output(severity logging.Severity, format string, args ...interface
 
 	if l.enableConsole {
 		l.muxConsole.Lock()
-		log.Printf(formats[severity])
+		fmt.Printf(formats[severity])
 		fmt.Printf(formataTimePadraoLog(time.Now()) + ": ")
 		if format == "" {
 			fmt.Printf(fmt.Sprint(args...))
