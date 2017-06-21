@@ -2,10 +2,14 @@ package snetlog
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"sync"
 	"time"
+
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 
 	"cloud.google.com/go/logging"
 )
@@ -43,7 +47,7 @@ var formats = map[logging.Severity]string{
 type Log struct {
 	enableConsole     bool
 	enableFile        bool
-	enableStackDriver bool
+	enableStackdriver bool
 
 	muxConsole sync.Mutex
 
@@ -84,7 +88,7 @@ func flushLogFile(log *Log) {
 }
 
 func (l *Log) output(severity logging.Severity, format string, args ...interface{}) {
-	if l.enableStackDriver && l.logStackdriver != nil {
+	if l.enableStackdriver && l.logStackdriver != nil {
 		if format != "" {
 			l.logStackdriver.Log(logging.Entry{Severity: severity,
 				Payload: fmt.Sprintf(format, args...)})
@@ -222,4 +226,37 @@ func NewLogConsole(config *ConsoleConfig) *Log {
 	}
 
 	return log
+}
+
+//StackdriverConfig ...
+type StackdriverConfig struct {
+	Credencial   string
+	LogID        string
+	LogProjectID string
+}
+
+//NewLogStackdriver ...
+func NewLogStackdriver(config *StackdriverConfig) (*Log, error) {
+	log := &Log{
+		enableStackdriver: true,
+	}
+
+	cfg, err := google.JWTConfigFromJSON([]byte(config.Credencial), logging.WriteScope) // key is the credentials JSON as []byte
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	client, err := logging.NewClient(ctx, config.LogProjectID,
+		option.WithTokenSource(cfg.TokenSource(ctx)))
+	if err != nil {
+		return nil, err
+	}
+	client.OnError = func(err error) {
+		fmt.Fprintf(os.Stdout, "logging: %v", err)
+	}
+
+	log.logStackdriver = client.Logger(config.LogID)
+
+	return log, nil
 }
